@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Contracts (last updated v5.2.0) (token/ERC20/ERC20.sol)
+pragma solidity ^0.8.20;
+
+contract  WeightedVoting {
+    struct Voter { //投票人
+        address delegate;
+        uint weight;
+        bool voted;
+        uint vote;
+    }
+    struct Candidate { //候选人
+        string name;
+        uint votecount;
+    }
+address public chairperson;
+mapping (address => Voter) public voters;
+Candidate[] public candidates;
+
+constructor(string[] memory candidataNames){//初始化合约
+chairperson = msg.sender;
+voters[chairperson].weight = 1;
+for(uint i=0; i<candidataNames.length; i++){
+    candidates.push(Candidate(
+    {
+        name: candidataNames[i],
+        votecount: 0       
+    })
+);
+}
+}
+function giveRightToVote(address voter) public {//创建者赋予投票权
+    require(msg.sender == chairperson, "Only chairperson can give right to vote");
+    require(voters[voter].voted == false, "already voted");
+    require(voters[voter].weight == 0, "already hasn weight");
+    voters[voter].weight = 1;
+}
+
+function delegate(address to) public {//委托其他人投票
+    Voter storage sender = voters[msg.sender];
+    require(sender.weight>0,"you have no right to vote");
+    require(sender.voted == false, "already voted");
+    address tmp = to;
+    while(voters[tmp].delegate != address(0)) { //继续查找委托人
+     tmp = voters[tmp].delegate;
+     require(tmp != msg.sender, "loop detected");
+}
+sender.voted = true;
+sender.delegate = to;
+
+Voter storage delegate_ = voters[to];
+if(delegate_.voted) {
+    candidates[delegate_.vote].votecount += sender.weight;
+}
+else{
+    delegate_.weight += sender.weight;
+}
+}
+function vote(uint candidateindex) public { //进行投票
+    Voter storage sender = voters[msg.sender];
+    require(sender.voted == false, "already voted");
+    sender.voted = true;
+    sender.vote = candidateindex;
+    candidates[candidateindex].votecount += sender.weight;
+}
+
+function winningCadidate() public view returns(uint winningindex){//判断胜利人员
+    uint  max =0;
+    for(uint i=0; i<candidates.length; i++){
+        if(candidates[i].votecount > max){
+            max = candidates[i].votecount;
+            winningindex = i; 
+        }           
+    }
+
+}
+function winnercadidate() public view returns (string memory){ //输出胜利人员
+    return candidates[winningCadidate()].name;
+}
+}
